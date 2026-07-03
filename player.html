@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Stream Player</title>
+  <script src="https://cdn.jsdelivr.net/npm/shaka-player@4.16.2/dist/shaka-player.ui.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/shaka-player@4.16.2/dist/controls.min.css">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; background: #000; overflow: hidden; font-family: system-ui, -apple-system, sans-serif; }
+    .shaka-video-container { position: fixed; inset: 0; background: #000; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; }
+    video { width: 100%; height: 100%; object-fit: contain; background: #000; }
+    .shaka-spinner-container { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="shaka-video-container" id="player-container">
+    <video id="video" autoplay playsinline></video>
+  </div>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      shaka.polyfill.installAll();
+      if (!shaka.Player.isBrowserSupported()) {
+        console.error('Browser not supported!');
+        return;
+      }
+
+      const videoEl = document.getElementById('video');
+      const container = document.getElementById('player-container');
+
+      const streamUrl = "https://a121aivottepl-a.akamaihd.net/gru-nitro/live/clients/dash/enc/jo3rmhhp2r/out/v1/50656942ce4e40a1be824c9d83578fe9/cenc.mpd";
+      const keyId = "34475edab991ad5e92548aebd710410a";
+      const key = "501b209cccd323ac00bf5ac15b406cb4";
+
+      const player = new shaka.Player();
+      await player.attach(videoEl);
+      const ui = new shaka.ui.Overlay(player, container, videoEl);
+
+      ui.configure({
+        controlPanelElements: ['play_pause','mute','volume','time_and_duration','spacer','language','captions','picture_in_picture','quality','fullscreen'],
+        seekBarColors: { base:'white', buffered:'red', played:'green' }
+      });
+
+      player.configure({
+        drm: { clearKeys: { [keyId]: key } },
+        abr: { defaultBandwidthEstimate: 10000, enabled: true, switchInterval: 1 },
+        manifest: {
+          defaultPresentationDelay: 4,
+          dash: { ignoreSuggestedPresentationDelay: true, ignoreMinBufferTime: true, autoCorrectDrift: true }
+        },
+        streaming: {
+          bufferingGoal: 8, rebufferingGoal: 2, bufferBehind: 10,
+          lowLatencyMode: true, safeSeekOffset: 4, stallThreshold: 1, jumpLargeGaps: true
+        }
+      });
+
+      try {
+        await player.load(streamUrl, -4);
+        videoEl.play();
+      } catch(e) {
+        console.error('Error loading video:', e);
+      }
+    });
+  </script>
+</body>
+</html>

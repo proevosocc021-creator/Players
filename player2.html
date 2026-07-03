@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>CT Sport Player</title>
+  <script src="https://cdn.jsdelivr.net/npm/shaka-player@4.16.2/dist/shaka-player.ui.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/shaka-player@4.16.2/dist/controls.min.css">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; background: #000; overflow: hidden; font-family: system-ui, -apple-system, sans-serif; }
+    
+    #player-wrapper { width: 100%; height: 100%; position: relative; display: flex; align-items: center; justify-content: center; }
+    .shaka-video-container { width: 100%; height: 100%; position: absolute; inset: 0; background: #000; }
+    video { width: 100%; height: 100%; object-fit: contain; }
+  </style>
+</head>
+<body>
+  
+  <div id="player-wrapper">
+    <div class="shaka-video-container" id="player-container">
+      <video id="video" autoplay playsinline muted></video>
+    </div>
+  </div>
+
+  <script>
+    const streamUrl = "https://dash2.antik.sk/stream/nvidia_ct_sport/playlist_cenc.mpd";
+    const keyId = "11223344556677889900112233445566"; 
+    const key = "4b80724d0ef86bcb2c21f7999d67739d"; 
+
+    function onPlayerErrorEvent(event) {
+      onPlayerError(event.detail);
+    }
+
+    function onPlayerError(error) {
+      let errorMsg = `Error code: ${error.code}`;
+      
+      if (error.category === shaka.util.Error.Category.NETWORK) {
+        errorMsg += ` (Network Error).`;
+      } else if (error.category === shaka.util.Error.Category.DRM) {
+        errorMsg += ` (DRM Error).`;
+      } else if (error.category === shaka.util.Error.Category.MANIFEST) {
+        errorMsg += ` (Manifest Error).`;
+      }
+
+      if (error.data && error.data.length > 0) {
+        errorMsg += ` | Details: ${error.data.join(', ')}`;
+      }
+
+      console.error(`CRITICAL ERROR: ${errorMsg}`);
+      if (error.message) console.error(`Stack trace: ${error.message}`);
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      shaka.polyfill.installAll();
+      
+      if (!shaka.Player.isBrowserSupported()) {
+        console.error('Browser does not support Shaka Player.');
+        return;
+      }
+      
+      console.log('Initializing player...');
+
+      const videoEl = document.getElementById('video');
+      const container = document.getElementById('player-container');
+      const player = new shaka.Player();
+      
+      const ui = new shaka.ui.Overlay(player, container, videoEl);
+      ui.configure({
+        controlPanelElements: ['play_pause', 'mute', 'volume', 'time_and_duration', 'spacer', 'language', 'captions', 'picture_in_picture', 'quality', 'fullscreen'],
+        seekBarColors: { base: 'white', buffered: 'red', played: 'green' }
+      });
+
+      player.addEventListener('error', onPlayerErrorEvent);
+      
+      player.addEventListener('loading', () => {
+        console.log('Event: "loading" - Fetching manifest...');
+      });
+      
+      player.addEventListener('buffering', (e) => {
+        console.log(`Event: "buffering" - Player is ${e.buffering ? 'stalled, buffering' : 'ready to play'}`);
+      });
+      
+      player.addEventListener('adaptation', () => {
+        const activeTracks = player.getVariantTracks().filter(t => t.active);
+        if (activeTracks.length > 0) {
+          console.log(`Event: "adaptation" - Switched to track: ${activeTracks[0].width}x${activeTracks[0].height} @ ${Math.round(activeTracks[0].bandwidth/1000)} kbps`);
+        }
+      });
+      
+      player.addEventListener('trackschanged', () => {
+        const tracks = player.getVariantTracks();
+        console.log(`Event: "trackschanged" - Available video tracks: ${tracks.length}`);
+      });
+
+      player.addEventListener('drmsessionupdate', () => {
+        console.log('Event: "drmsessionupdate" - DRM session successfully updated.');
+      });
+
+      player.getNetworkingEngine().registerRequestFilter((type, request) => {
+        if (type === shaka.net.NetworkingEngine.RequestType.MANIFEST) {
+          console.log(`Network: Requesting Manifest -> ${request.uris[0]}`);
+        } else if (type === shaka.net.NetworkingEngine.RequestType.LICENSE) {
+          console.log(`Network: Requesting DRM License -> ${request.uris[0]}`);
+        }
+      });
+
+      player.getNetworkingEngine().registerResponseFilter((type, response) => {
+        if (type === shaka.net.NetworkingEngine.RequestType.MANIFEST) {
+          console.log(`Network: Manifest received successfully.`);
+        }
+      });
+
+      const playerConfig = {
+        abr: { defaultBandwidthEstimate: 10000, enabled: true, switchInterval: 1 },
+        manifest: {
+          defaultPresentationDelay: 4,
+          dash: { ignoreSuggestedPresentationDelay: true, ignoreMinBufferTime: true, autoCorrectDrift: true }
+        },
+        streaming: {
+          bufferingGoal: 8, rebufferingGoal: 2, bufferBehind: 10,
+          lowLatencyMode: true, safeSeekOffset: 4, stallThreshold: 1, jumpLargeGaps: true
+        }
+      };
+
+      if (keyId && key) {
+        playerConfig.drm = {
+          clearKeys: {
+            [keyId]: key
+          }
+        };
+      }
+
+      player.configure(playerConfig);
+
+      try {
+        await player.attach(videoEl);
+        await player.load(streamUrl);
+        
+        try {
+          await videoEl.play();
+        } catch (playErr) {
+          console.warn(`Autoplay prevented: ${playErr.message}`);
+        }
+        
+      } catch (e) {
+        onPlayerError(e);
+      }
+    });
+  </script>
+</body>
+</html>

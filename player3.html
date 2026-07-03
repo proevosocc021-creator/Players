@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="referrer" content="no-referrer">
+<title>BenSports // Live Player</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/shaka-player@5.1.8/dist/controls.css">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;background:#000;overflow:hidden;font-family:'Segoe UI',Roboto,sans-serif;-webkit-user-select:none;user-select:none}
+.shaka-video-container{position:fixed;inset:0;background:#000;display:flex;align-items:center;justify-content:center}
+video{width:100%;height:100%;object-fit:contain;background:#000}
+video.mode-fill{object-fit:fill}video.mode-cover{object-fit:cover}
+.shaka-spinner-container,.shaka-spinner,.shaka-spinner-svg{display:none!important}
+.shaka-controls-container button{color:#fff!important}
+.shaka-fit-btn{background:transparent!important;border:none!important;cursor:pointer!important;padding:0 10px!important;opacity:.85;display:flex;align-items:center;justify-content:center;height:100%;transition:opacity .15s}
+.shaka-fit-btn:hover{opacity:1}.shaka-fit-btn svg{width:18px;height:18px;display:block}
+#loader{position:absolute;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:9;opacity:0;pointer-events:none;transition:opacity .2s}
+#loader.on{opacity:1}.spin{width:36px;height:36px;border:3px solid rgba(255,255,255,.15);border-top-color:#38bdf8;border-radius:50%;animation:sp .75s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+/* Watermark */
+#wm{position:absolute;z-index:5;pointer-events:none;display:flex;align-items:center;gap:6px;opacity:.55;filter:drop-shadow(0 1px 2px rgba(0,0,0,.6));transition:opacity .25s,bottom .25s,right .25s}
+#wm.bottom-right{bottom:14px;right:14px}
+#wm.top-right{top:14px;right:14px}
+#wm.bottom-left{bottom:14px;left:14px}
+#wm.top-left{top:14px;left:14px}
+#wm .wm-mark{font-weight:700;font-size:15px;color:#fff;letter-spacing:.3px;white-space:nowrap;text-shadow:0 1px 3px rgba(0,0,0,.7)}
+#wm .wm-mark span{color:#38bdf8}
+.controls-visible #wm.bottom-right,.controls-visible #wm.bottom-left{bottom:58px}
+</style>
+</head>
+<body>
+<div class="shaka-video-container" id="pc">
+  <video id="v" autoplay playsinline muted preload="metadata"></video>
+  <div id="wm" class="bottom-right">
+    <div class="wm-mark">Ben<span>Sports</span></div>
+  </div>
+  <div id="loader"><div class="spin"></div></div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/shaka-player@5.1.8/dist/shaka-player.ui.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', async () => {
+  shaka.polyfill.installAll();
+  if (!shaka.Player.isBrowserSupported()) {
+    console.error('Browser not supported!');
+    return;
+  }
+  const videoEl = document.getElementById('v');
+  const container = document.getElementById('pc');
+  const loader = document.getElementById('loader');
+  
+  const streamUrl = "https://rxne77juptdeyke3tytvgqwyh.medya.trt.com.tr/master.m3u8";
+  const player = new shaka.Player();
+  await player.attach(videoEl);
+  
+  const ui = new shaka.ui.Overlay(player, container, videoEl);
+  ui.configure({
+    controlPanelElements: ['play_pause','mute','volume','time_and_duration','spacer','language','captions','picture_in_picture','quality','fullscreen'],
+    seekBarColors: { base:'white', buffered:'red', played:'green' }
+  });
+  player.addEventListener('buffering', (e) => {
+    if (e.buffering) {
+      loader.classList.add('on');
+    } else {
+      loader.classList.remove('on');
+    }
+  });
+  const controlsContainer = container.querySelector('.shaka-controls-container');
+  if (controlsContainer) {
+    const observer = new MutationObserver(() => {
+      if (controlsContainer.getAttribute('shown') !== null) {
+        container.classList.add('controls-visible');
+      } else {
+        container.classList.remove('controls-visible');
+      }
+    });
+    observer.observe(controlsContainer, { attributes: true, attributeFilter: ['shown'] });
+  }
+  player.configure({
+    abr: { defaultBandwidthEstimate: 10000, enabled: true, switchInterval: 1 },
+    manifest: {
+      defaultPresentationDelay: 4,
+    },
+    streaming: {
+      bufferingGoal: 8, rebufferingGoal: 2, bufferBehind: 10,
+      lowLatencyMode: true, safeSeekOffset: 4, stallThreshold: 1, jumpLargeGaps: true
+    }
+  });
+  loader.classList.add('on');
+  try {
+    await player.load(streamUrl);
+    loader.classList.remove('on');
+    
+    try {
+      await videoEl.play();
+    } catch(e) {
+      console.warn("Autoplay prevented:", e);
+    }
+  } catch(e) {
+    console.error('Error loading video', e);
+    loader.classList.remove('on');
+  }
+});
+</script>
+</body>
+</html>
