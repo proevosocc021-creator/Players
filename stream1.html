@@ -4,7 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="referrer" content="no-referrer">
-<title>OneSports // Live Player</title>
+<title>OneSports // FIFA PPV</title>
+<!-- Using Shaka Player 5.1.8 for best DASH and DRM support -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/shaka-player@5.1.8/dist/controls.css">
 <style>
 /* Base Styles */
@@ -70,10 +71,37 @@ video{width:100%;height:100%;object-fit:contain;background:#000}
 <script src="https://cdn.jsdelivr.net/npm/shaka-player@5.1.8/dist/shaka-player.ui.min.js"></script>
 <script>
 /* =======================================================
-   CHANGE YOUR M3U8 STREAM URL HERE 
+   STREAM AND DRM CONFIGURATION 
 ======================================================= */
-const STREAM_URL = "https://dash2.antik.sk/stream/nvidia_ct_sport/playlist_cenc.mpd";
+const STREAM_URL = "https://qp-pldt-live-bpk-ucd-prod.akamaized.net/bpk-tv/fifa_ppv1/default/index.mpd";
+
+// 🔓 Decryption keys extracted from source:
+const KEY_ID = "2c338a117d434ce4bbe3569231af90f1";
+const KEY = "a9633d901ee8a3f4f58ac314b5c5f4fb";
 /* ======================================================= */
+
+function onPlayerErrorEvent(event) {
+  onPlayerError(event.detail);
+}
+
+function onPlayerError(error) {
+  let errorMsg = `Error code: ${error.code}`;
+  if (error.category === shaka.util.Error.Category.NETWORK) {
+    errorMsg += ` (Network Error).`;
+  } else if (error.category === shaka.util.Error.Category.DRM) {
+    errorMsg += ` (DRM Error - Did you forget to add the decryption key?).`;
+  } else if (error.category === shaka.util.Error.Category.MANIFEST) {
+    errorMsg += ` (Manifest Error).`;
+  }
+  if (error.data && error.data.length > 0) {
+    errorMsg += ` | Details: ${error.data.join(', ')}`;
+  }
+  console.error(`CRITICAL ERROR: ${errorMsg}`);
+  
+  if (error.code === 6001 || error.code === 6013 || KEY === "PUT_YOUR_DECRYPTION_KEY_HERE") {
+      alert("DRM Error: This stream is encrypted. You must provide the correct Decryption Key in the HTML code.");
+  }
+}
 
 document.addEventListener('DOMContentLoaded', async () => {
   shaka.polyfill.installAll();
@@ -89,7 +117,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const player = new shaka.Player();
   await player.attach(videoEl);
 
-  // Setup UI with Picture-in-Picture, Quality Selector, etc.
   const ui = new shaka.ui.Overlay(player, container, videoEl);
   ui.configure({
     controlPanelElements: [
@@ -101,12 +128,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     addBigPlayButton: true,
   });
 
-  // Handle Loading Spinner
+  player.addEventListener('error', onPlayerErrorEvent);
+
   player.addEventListener('buffering', (e) => {
     loader.classList.toggle('on', e.buffering);
   });
 
-  // Shift watermark when controls show/hide
   const controlsContainer = container.querySelector('.shaka-controls-container');
   if (controlsContainer) {
     const observer = new MutationObserver(() => {
@@ -115,17 +142,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     observer.observe(controlsContainer, { attributes: true, attributeFilter: ['shown'] });
   }
 
-  // Optimize for Live Streams (Adaptive resolutions, live edge tracking)
-  player.configure({
+  const playerConfig = {
     abr: {
-      enabled: true, // Automatically switches resolutions
-      defaultBandwidthEstimate: 3000000, 
+      enabled: true, 
+      defaultBandwidthEstimate: 10000000, 
+    },
+    manifest: {
+      defaultPresentationDelay: 4,
+      dash: { ignoreSuggestedPresentationDelay: true, ignoreMinBufferTime: true, autoCorrectDrift: true }
     },
     streaming: {
       bufferingGoal: 10,
       rebufferingGoal: 2,
       bufferBehind: 15,
-      lowLatencyMode: true, // Optimizes for live broadcasts
+      lowLatencyMode: true,
       jumpLargeGaps: true,
       retryParameters: {
         maxAttempts: 5,
@@ -133,15 +163,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         timeout: 20000
       }
     }
-  });
+  };
+
+  // 🔓 Apply DRM Keys
+  if (KEY_ID && KEY && KEY !== "PUT_YOUR_DECRYPTION_KEY_HERE") {
+    playerConfig.drm = {
+      clearKeys: {
+        [KEY_ID]: KEY
+      }
+    };
+  }
+
+  player.configure(playerConfig);
 
   loader.classList.add('on');
   try {
-    // Load the stream
     await player.load(STREAM_URL);
     loader.classList.remove('on');
     
-    // Attempt to seek to the absolute latest live edge
     if (player.isLive()) {
       videoEl.currentTime = player.seekRange().end;
     }
@@ -152,7 +191,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       console.warn('Autoplay prevented by browser:', e);
     }
   } catch (e) {
-    console.error('Error loading stream:', e);
+    onPlayerErrorEvent({detail: e});
     loader.classList.remove('on');
   }
 });
