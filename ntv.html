@@ -39,15 +39,6 @@ video{width:100%;height:100%;object-fit:contain;background:#000}
 #status button{background:#f5b301;color:#111;border:0;padding:11px 26px;border-radius:8px;font-weight:700;font-size:14px;cursor:pointer;letter-spacing:.5px}
 #status button:hover{background:#ffc21f}
 
-/* ---------- LIVE badge (integrated in control bar) ---------- */
-#live{display:none;align-items:center;gap:7px;padding:0 10px;cursor:pointer;transition:opacity .25s;height:100%;margin:auto 0}
-#live.show{display:flex}
-#live .dot{width:9px;height:9px;border-radius:50%;background:#ff3b30;box-shadow:0 0 0 0 rgba(255,59,48,.7);animation:pulse 1.8s infinite}
-#live.behind .dot{background:#888;animation:none}
-#live span{color:#fff;font-size:12px;font-weight:700;letter-spacing:1px}
-#live.behind span{color:#ccc}
-#live:hover{opacity:0.8}
-@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(255,59,48,.7)}70%{box-shadow:0 0 0 7px rgba(255,59,48,0)}100%{box-shadow:0 0 0 0 rgba(255,59,48,0)}}
 
 /* ---------- OneSports watermark (bottom right corner) ---------- */
 #wm{
@@ -79,7 +70,6 @@ video{width:100%;height:100%;object-fit:contain;background:#000}
 /* Small screens: shrink watermark */
 @media (max-width:600px){
   .wm-text{font-size:15px}
-  #live span{font-size:11px}
 }
 </style>
 </head>
@@ -88,8 +78,6 @@ video{width:100%;height:100%;object-fit:contain;background:#000}
   <!-- Video -->
   <video id="v" autoplay playsinline muted preload="auto"></video>
 
-  <!-- LIVE badge -->
-  <div id="live" title="Jump to live"><span class="dot"></span><span>LIVE</span></div>
 
   <!-- Watermark -->
   <div id="wm">
@@ -137,7 +125,7 @@ const LIVE_EDGE_TOLERANCE  = 20;   // if we fall more than this behind live, bad
 const MAX_AUTO_RELOADS     = 6;    // auto-reconnect attempts before giving up
 /* ======================================================= */
 
-let player, videoEl, container, loader, loaderTxt, statusEl, statusTitle, statusMsg, statusBtn, liveBadge;
+let player, videoEl, container, loader, loaderTxt, statusEl, statusTitle, statusMsg, statusBtn;
 let autoReloads = 0;
 let reloadTimer = null;
 let watchdogTimer = null;
@@ -199,21 +187,12 @@ function seekToLive(){
   }catch(e){}
 }
 
-function updateLiveBadge(){
-  if (!player || !player.isLive()){ liveBadge.classList.remove("show"); return; }
-  liveBadge.classList.add("show");
-  try{
-    const behind = player.seekRange().end - videoEl.currentTime;
-    liveBadge.classList.toggle("behind", behind > LIVE_EDGE_TOLERANCE);
-  }catch(e){}
-}
 
 /* ---------- Stall watchdog ---------- */
 function startWatchdog(){
   let lastTime = -1, stalls = 0;
   clearInterval(watchdogTimer);
   watchdogTimer = setInterval(() => {
-    updateLiveBadge();
     if (videoEl.paused || videoEl.ended || videoEl.readyState < 2) { lastTime = videoEl.currentTime; return; }
     if (Math.abs(videoEl.currentTime - lastTime) < 0.01){
       stalls++;
@@ -253,7 +232,6 @@ async function loadStream(){
     hideStatus();
     if (player.isLive()) seekToLive();
     try { await videoEl.play(); } catch(e){ console.warn("Autoplay prevented:", e); }
-    updateLiveBadge();
   }catch(e){
     handleError(e);
   }
@@ -275,7 +253,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   statusTitle = document.getElementById("statusTitle");
   statusMsg   = document.getElementById("statusMsg");
   statusBtn   = document.getElementById("statusBtn");
-  liveBadge   = document.getElementById("live");
 
   player = new shaka.Player();
   await player.attach(videoEl);
@@ -284,7 +261,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   ui.configure({
     controlPanelElements: [
       'play_pause', 'mute', 'volume', 'time_and_duration',
-      'spacer', 'picture_in_picture', 'playback_rate', 'quality', 'fullscreen'
+      'spacer', 'picture_in_picture', 'quality', 'fullscreen'
     ],
     seekBarColors: { base:'rgba(255,255,255,0.3)', buffered:'rgba(255,255,255,0.65)', played:'#f5b301' },
     fadeDelay: 2,
@@ -341,13 +318,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     }).observe(controlsContainer, { attributes:true, attributeFilter:["shown"] });
   }
 
-  // Move the LIVE badge into the control bar, right before the mute button
-  const muteBtn = container.querySelector(".shaka-mute-button");
-  if (muteBtn && muteBtn.parentNode) {
-      muteBtn.parentNode.insertBefore(liveBadge, muteBtn);
-  }
-
-  liveBadge.addEventListener("click", seekToLive);
   statusBtn.addEventListener("click", () => { autoReloads = 0; loadStream(); });
   container.addEventListener("contextmenu", (e) => e.preventDefault());
 
