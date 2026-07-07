@@ -115,10 +115,10 @@ const KEY_ID     = TEST_MODE ? "" : REAL_KEY_ID;
 const KEY        = TEST_MODE ? "" : REAL_KEY;
 
 /* ---------- Tunables (safe to adjust) ---------- */
-const PRESENTATION_DELAY   = 12;   // seconds behind live edge — more = smoother, less = closer to live
-const BUFFERING_GOAL       = 30;   // seconds of buffer to build ahead
-const REBUFFERING_GOAL     = 4;    // seconds of buffer needed before resuming after a stall
-const BUFFER_BEHIND        = 30;   // seconds of buffer kept behind playhead
+const PRESENTATION_DELAY   = 30;   // seconds behind live edge for safety net
+const BUFFERING_GOAL       = 45;   // seconds of buffer to aggressively build ahead
+const REBUFFERING_GOAL     = 2;    // seconds of buffer needed to resume after network drop
+const BUFFER_BEHIND        = 10;   // keep less history to save device RAM
 const LIVE_EDGE_TOLERANCE  = 20;   // if we fall more than this behind live, badge shows "BEHIND"
 const MAX_AUTO_RELOADS     = 6;    // auto-reconnect attempts before giving up
 /* ======================================================= */
@@ -126,7 +126,6 @@ const MAX_AUTO_RELOADS     = 6;    // auto-reconnect attempts before giving up
 let player, videoEl, container, loader, loaderTxt, statusEl, statusTitle, statusMsg, statusBtn;
 let autoReloads = 0;
 let reloadTimer = null;
-let watchdogTimer = null;
 
 /* ---------- Error handling ---------- */
 function describeError(error){
@@ -175,34 +174,6 @@ function showStatus(title, msg, btnText){
 }
 function hideStatus(){ statusEl.classList.remove("on"); }
 
-/* ---------- Live-edge helpers ---------- */
-function seekToLive(){
-  try{
-    if (player.isLive()){
-      videoEl.currentTime = player.seekRange().end;
-      videoEl.play().catch(()=>{});
-    }
-  }catch(e){}
-}
-
-/* ---------- Stall watchdog ---------- */
-function startWatchdog(){
-  let lastTime = -1, stalls = 0;
-  clearInterval(watchdogTimer);
-  watchdogTimer = setInterval(() => {
-    if (videoEl.paused || videoEl.ended || videoEl.readyState < 2) { lastTime = videoEl.currentTime; return; }
-    if (Math.abs(videoEl.currentTime - lastTime) < 0.01){
-      stalls++;
-      if (stalls >= 4){
-        console.warn("Watchdog: playback frozen, jumping to live edge.");
-        seekToLive();
-        stalls = 0;
-      }
-    } else { stalls = 0; }
-    lastTime = videoEl.currentTime;
-  }, 1000);
-}
-
 /* ---------- Keyboard shortcuts ---------- */
 function bindKeys(){
   document.addEventListener("keydown", (e) => {
@@ -227,7 +198,6 @@ async function loadStream(){
     autoReloads = 0;
     loader.classList.remove("on");
     hideStatus();
-    if (player.isLive()) seekToLive();
     try { await videoEl.play(); } catch(e){ console.warn("Autoplay prevented:", e); }
   }catch(e){
     handleError(e);
@@ -271,27 +241,27 @@ document.addEventListener("DOMContentLoaded", async () => {
   const playerConfig = {
     abr: {
       enabled: true,
-      defaultBandwidthEstimate: 15000000,  // High estimate (15 Mbps) to hit max resolution quickly
-      switchInterval: 8,
-      restrictToElementSize: false,        // Allows full max resolution even on smaller screen windows
+      defaultBandwidthEstimate: 3000000,   // Start at 3 Mbps for instant playback, ABR will quickly scale to 4K
+      switchInterval: 4,                   // Check bandwidth frequently to upgrade to 4K faster
+      restrictToElementSize: false,        // Essential to allow 4K rendering even if the window is small
     },
     manifest: {
       defaultPresentationDelay: PRESENTATION_DELAY,
-      dash: { ignoreSuggestedPresentationDelay: true, ignoreMinBufferTime: false, autoCorrectDrift: true },
+      dash: { ignoreSuggestedPresentationDelay: false, ignoreMinBufferTime: false, autoCorrectDrift: true },
       hls: { ignoreManifestProgramDateTime: true },
-      retryParameters: { maxAttempts: 6, baseDelay: 600, backoffFactor: 1.6, timeout: 30000 }
+      retryParameters: { maxAttempts: 5, baseDelay: 500, backoffFactor: 2, timeout: 20000 }
     },
     streaming: {
       bufferingGoal:   BUFFERING_GOAL,
       rebufferingGoal: REBUFFERING_GOAL,
       bufferBehind:    BUFFER_BEHIND,
-      lowLatencyMode:  false,              // main buffering fix
+      lowLatencyMode:  false,
       jumpLargeGaps:   true,
-      gapDetectionThreshold: 0.5,
+      gapDetectionThreshold: 0.1,          // Aggressively jump over errors/missing chunks
       stallEnabled:    true,
       stallThreshold:  1,
       stallSkip:       0.1,
-      retryParameters: { maxAttempts: 8, baseDelay: 500, backoffFactor: 1.6, fuzzFactor: 0.5, timeout: 30000 }
+      retryParameters: { maxAttempts: 6, baseDelay: 500, backoffFactor: 2, fuzzFactor: 0.5, timeout: 20000 }
     }
   };
 
@@ -320,7 +290,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   container.addEventListener("contextmenu", (e) => e.preventDefault());
 
   bindKeys();
-  startWatchdog();
   await loadStream();
 });
 </script>
