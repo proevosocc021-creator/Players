@@ -148,14 +148,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       defaultBandwidthEstimate: 10000000, 
     },
     manifest: {
-      defaultPresentationDelay: 4,
-      dash: { ignoreSuggestedPresentationDelay: true, ignoreMinBufferTime: true, autoCorrectDrift: true }
+      defaultPresentationDelay: 10,
+      dash: { ignoreSuggestedPresentationDelay: false, ignoreMinBufferTime: false, autoCorrectDrift: true }
     },
     streaming: {
       bufferingGoal: 10,
       rebufferingGoal: 2,
       bufferBehind: 15,
-      lowLatencyMode: true,
+      lowLatencyMode: false,
       jumpLargeGaps: true,
       retryParameters: {
         maxAttempts: 5,
