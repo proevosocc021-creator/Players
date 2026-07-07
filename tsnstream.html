@@ -27,7 +27,7 @@ video{width:100%;height:100%;object-fit:contain;background:#000}
 /* ---------- Custom loading spinner ---------- */
 #loader{position:absolute;inset:0;background:rgba(0,0,0,.5);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:9;opacity:0;pointer-events:none;transition:opacity .2s}
 #loader.on{opacity:1}
-.spin{width:44px;height:44px;border:4px solid rgba(255,255,255,.2);border-top-color:#8a2be2;border-radius:50%;animation:sp .8s linear infinite}
+.spin{width:44px;height:44px;border:4px solid rgba(255,255,255,.2);border-top-color:#f5b301;border-radius:50%;animation:sp .8s linear infinite}
 #loaderTxt{color:#fff;font-size:13px;letter-spacing:.5px;opacity:.85}
 @keyframes sp{to{transform:rotate(360deg)}}
 
@@ -36,16 +36,17 @@ video{width:100%;height:100%;object-fit:contain;background:#000}
 #status.on{display:flex}
 #status h2{color:#fff;font-size:18px;font-weight:600}
 #status p{color:#bbb;font-size:13px;max-width:420px;line-height:1.5}
-#status button{background:#8a2be2;color:#fff;border:0;padding:11px 26px;border-radius:8px;font-weight:700;font-size:14px;cursor:pointer;letter-spacing:.5px}
-#status button:hover{background:#7a1cd6}
+#status button{background:#f5b301;color:#111;border:0;padding:11px 26px;border-radius:8px;font-weight:700;font-size:14px;cursor:pointer;letter-spacing:.5px}
+#status button:hover{background:#ffc21f}
 
-/* ---------- LIVE badge (click to jump to live edge) ---------- */
-#live{position:absolute;top:16px;left:16px;z-index:6;display:none;align-items:center;gap:7px;background:rgba(0,0,0,.55);padding:6px 12px;border-radius:6px;cursor:pointer;transition:opacity .25s, top .25s}
+/* ---------- LIVE badge (integrated in control bar) ---------- */
+#live{display:none;align-items:center;gap:7px;padding:0 10px;cursor:pointer;transition:opacity .25s;height:100%;margin:auto 0}
 #live.show{display:flex}
 #live .dot{width:9px;height:9px;border-radius:50%;background:#ff3b30;box-shadow:0 0 0 0 rgba(255,59,48,.7);animation:pulse 1.8s infinite}
 #live.behind .dot{background:#888;animation:none}
 #live span{color:#fff;font-size:12px;font-weight:700;letter-spacing:1px}
 #live.behind span{color:#ccc}
+#live:hover{opacity:0.8}
 @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(255,59,48,.7)}70%{box-shadow:0 0 0 7px rgba(255,59,48,0)}100%{box-shadow:0 0 0 0 rgba(255,59,48,0)}}
 
 /* ---------- OneSports watermark (bottom right corner) ---------- */
@@ -86,6 +87,9 @@ video{width:100%;height:100%;object-fit:contain;background:#000}
 <div class="shaka-video-container" id="pc">
   <!-- Video -->
   <video id="v" autoplay playsinline muted preload="auto"></video>
+
+  <!-- LIVE badge -->
+  <div id="live" title="Jump to live"><span class="dot"></span><span>LIVE</span></div>
 
   <!-- Watermark -->
   <div id="wm">
@@ -282,7 +286,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       'play_pause', 'mute', 'volume', 'time_and_duration',
       'spacer', 'picture_in_picture', 'playback_rate', 'quality', 'fullscreen'
     ],
-    seekBarColors: { base:'rgba(255,255,255,0.3)', buffered:'rgba(255,255,255,0.65)', played:'#8a2be2' },
+    seekBarColors: { base:'rgba(255,255,255,0.3)', buffered:'rgba(255,255,255,0.65)', played:'#f5b301' },
     fadeDelay: 2,
     addBigPlayButton: true,
     doubleClickForFullscreen: true,
@@ -335,6 +339,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     new MutationObserver(() => {
       container.classList.toggle("controls-visible", controlsContainer.getAttribute("shown") !== null);
     }).observe(controlsContainer, { attributes:true, attributeFilter:["shown"] });
+  }
+
+  // Move the LIVE badge into the control bar, right before the mute button
+  const muteBtn = container.querySelector(".shaka-mute-button");
+  if (muteBtn && muteBtn.parentNode) {
+      muteBtn.parentNode.insertBefore(liveBadge, muteBtn);
   }
 
   liveBadge.addEventListener("click", seekToLive);
