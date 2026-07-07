@@ -24,17 +24,16 @@ video{width:100%;height:100%;object-fit:contain;background:#000}
 .shaka-spinner-container,.shaka-spinner,.shaka-spinner-svg{display:none!important}
 .shaka-controls-container button{color:#fff!important}
 
-/* ---------- Premium Vibrant Loader ---------- */
+/* ---------- Premium Transparent Loader ---------- */
 #loader {
   position: absolute;
   inset: 0;
-  background: rgba(30, 20, 0, 0.45); /* Warm golden/dark overlay on the full screen */
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  background: rgba(0, 0, 0, 0.75); /* Clean, dark transparent overlay */
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 20px;
   z-index: 99;
   opacity: 0;
   pointer-events: none;
@@ -44,87 +43,67 @@ video{width:100%;height:100%;object-fit:contain;background:#000}
   opacity: 1;
 }
 
-.loader-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-  /* Vibrant yellow to energetic orange/pink semi-transparent gradient */
-  background: linear-gradient(135deg, rgba(245, 179, 1, 0.85), rgba(255, 50, 80, 0.85));
-  padding: 40px 60px;
-  border-radius: 28px;
-  box-shadow: 0 25px 50px rgba(0,0,0,0.5), inset 0 2px 2px rgba(255,255,255,0.5);
-  border: 1px solid rgba(255,255,255,0.4);
+/* Double-Ring Glowing Buffering Animation */
+.spinner-container {
   position: relative;
-  overflow: hidden;
-}
-
-/* Sweeping shine effect across the box */
-.loader-content::after {
-  content: "";
-  position: absolute;
-  top: 0; left: -100%;
-  width: 50%; height: 100%;
-  background: linear-gradient(to right, transparent, rgba(255,255,255,0.4), transparent);
-  transform: skewX(-20deg);
-  animation: shine 3s infinite;
-  pointer-events: none;
-}
-@keyframes shine {
-  0% { left: -100%; }
-  20% { left: 200%; }
-  100% { left: 200%; }
-}
-
-/* Neon Equalizer Animation */
-.equalizer {
+  width: 70px;
+  height: 70px;
   display: flex;
-  align-items: flex-end;
-  gap: 6px;
-  height: 40px;
-  margin-bottom: 10px;
-  z-index: 2; /* Keeps it above the shine */
+  align-items: center;
+  justify-content: center;
 }
-.bar {
-  width: 8px;
-  background: #ffffff; /* Pure white to pop against the yellow/orange */
-  border-radius: 4px;
-  animation: equalize 1s ease-in-out infinite;
-  box-shadow: 0 0 15px rgba(255, 255, 255, 0.9);
+.ring-1 {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border: 4px solid transparent;
+  border-top-color: #f5b301;
+  border-right-color: #f5b301;
+  border-radius: 50%;
+  animation: spin 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+  filter: drop-shadow(0 0 10px rgba(245, 179, 1, 0.8));
 }
-.bar-1 { height: 20px; animation-delay: 0.0s; }
-.bar-2 { height: 40px; animation-delay: 0.2s; }
-.bar-3 { height: 30px; animation-delay: 0.4s; }
-.bar-4 { height: 35px; animation-delay: 0.1s; }
-.bar-5 { height: 25px; animation-delay: 0.3s; }
+.ring-2 {
+  position: absolute;
+  width: 60%;
+  height: 60%;
+  border: 4px solid transparent;
+  border-bottom-color: #ffffff;
+  border-left-color: #ffffff;
+  border-radius: 50%;
+  animation: spin-reverse 0.9s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.8));
+}
 
-@keyframes equalize {
-  0%, 100% { height: 10px; }
-  50% { height: 40px; }
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+@keyframes spin-reverse {
+  0% { transform: rotate(360deg); }
+  100% { transform: rotate(0deg); }
 }
 
 #loaderTxt {
   color: #fff;
   font-family: 'Orbitron', sans-serif;
-  font-size: 19px;
+  font-size: 22px;
   font-weight: 900;
   letter-spacing: 1.5px;
   text-transform: uppercase;
-  text-shadow: 0 2px 5px rgba(0,0,0,0.3);
-  z-index: 2;
+  text-shadow: 0 4px 10px rgba(0,0,0,0.8);
 }
 
 #loaderSubTxt {
-  color: rgba(255, 255, 255, 0.95);
-  font-size: 14px;
-  font-weight: 600;
+  color: #f5b301;
+  font-size: 15px;
+  font-weight: 700;
   letter-spacing: 0.5px;
   text-align: center;
-  max-width: 280px;
+  max-width: 300px;
   min-height: 20px;
-  text-shadow: 0 1px 3px rgba(0,0,0,0.25);
+  text-shadow: 0 2px 5px rgba(0,0,0,0.8);
   transition: opacity 0.3s ease;
-  z-index: 2;
 }
 
 /* ---------- Status / error overlay ---------- */
@@ -182,17 +161,12 @@ video{width:100%;height:100%;object-fit:contain;background:#000}
 
   <!-- Premium Loading Screen -->
   <div id="loader">
-    <div class="loader-content">
-      <div class="equalizer">
-        <span class="bar bar-1"></span>
-        <span class="bar bar-2"></span>
-        <span class="bar bar-3"></span>
-        <span class="bar bar-4"></span>
-        <span class="bar bar-5"></span>
-      </div>
-      <div id="loaderTxt">Loading your stream…</div>
-      <div id="loaderSubTxt">Tuning into live broadcast...</div>
+    <div class="spinner-container">
+      <div class="ring-1"></div>
+      <div class="ring-2"></div>
     </div>
+    <div id="loaderTxt">Loading your stream…</div>
+    <div id="loaderSubTxt">Tuning into live broadcast...</div>
   </div>
 
   <!-- Status / error overlay -->
@@ -224,10 +198,10 @@ const KEY_ID     = TEST_MODE ? "" : REAL_KEY_ID;
 const KEY        = TEST_MODE ? "" : REAL_KEY;
 
 /* ---------- Tunables (safe to adjust) ---------- */
-const PRESENTATION_DELAY   = 30;   // Industry standard sweet-spot for live streaming
-const BUFFERING_GOAL       = 60;   // aggressively hoard as much future data as possible
-const REBUFFERING_GOAL     = 1;    // if a stall happens, resume instantly after 1 second of data
-const BUFFER_BEHIND        = 5;    // drop past video instantly to free up resources
+const PRESENTATION_DELAY   = 30;   // seconds behind live edge — more = smoother, less = closer to live
+const BUFFERING_GOAL       = 30;   // seconds of buffer to build ahead
+const REBUFFERING_GOAL     = 2;    // seconds of buffer needed before resuming after a stall
+const BUFFER_BEHIND        = 30;   // seconds of buffer kept behind playhead
 const LIVE_EDGE_TOLERANCE  = 20;   // if we fall more than this behind live, badge shows "BEHIND"
 const MAX_AUTO_RELOADS     = 6;    // auto-reconnect attempts before giving up
 /* ======================================================= */
@@ -389,27 +363,26 @@ document.addEventListener("DOMContentLoaded", async () => {
   const playerConfig = {
     abr: {
       enabled: true,
-      defaultBandwidthEstimate: 1000000,   // Ultra-safe 1 Mbps start for absolute zero initial buffering
-      switchInterval: 2,                   // Hyper-aggressive ABR evaluation (every 2 seconds)
-      bandwidthDowngradeTarget: 0.85,      // Drops quality significantly earlier to avoid stalling
-      restrictToElementSize: true,
+      defaultBandwidthEstimate: 8000000,   // 8 Mbps start -> reaches 1080p fast on good connections
+      switchInterval: 8,
+      restrictToElementSize: true,         // fullscreen on a 1080p+ screen still serves 1080p; saves data on phones
     },
     manifest: {
       defaultPresentationDelay: PRESENTATION_DELAY,
       dash: { ignoreSuggestedPresentationDelay: false, ignoreMinBufferTime: false, autoCorrectDrift: true },
-      retryParameters: { maxAttempts: 10, baseDelay: 100, backoffFactor: 2, timeout: 15000 } // Instant retries
+      retryParameters: { maxAttempts: 6, baseDelay: 600, backoffFactor: 1.6, timeout: 30000 }
     },
     streaming: {
       bufferingGoal:   BUFFERING_GOAL,
       rebufferingGoal: REBUFFERING_GOAL,
       bufferBehind:    BUFFER_BEHIND,
-      lowLatencyMode:  false,              
+      lowLatencyMode:  false,              // main buffering fix
       jumpLargeGaps:   true,
-      gapDetectionThreshold: 0.1,
+      gapDetectionThreshold: 0.5,
       stallEnabled:    true,
       stallThreshold:  1,
       stallSkip:       0.1,
-      retryParameters: { maxAttempts: 10, baseDelay: 100, backoffFactor: 2, fuzzFactor: 0.5, timeout: 15000 } // Super fast chunk retry
+      retryParameters: { maxAttempts: 8, baseDelay: 500, backoffFactor: 1.6, fuzzFactor: 0.5, timeout: 30000 }
     }
   };
 
