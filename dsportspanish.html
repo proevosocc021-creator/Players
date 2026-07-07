@@ -24,12 +24,83 @@ video{width:100%;height:100%;object-fit:contain;background:#000}
 .shaka-spinner-container,.shaka-spinner,.shaka-spinner-svg{display:none!important}
 .shaka-controls-container button{color:#fff!important}
 
-/* ---------- Custom loading spinner ---------- */
-#loader{position:absolute;inset:0;background:rgba(0,0,0,.5);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:9;opacity:0;pointer-events:none;transition:opacity .2s}
-#loader.on{opacity:1}
-.spin{width:44px;height:44px;border:4px solid rgba(255,255,255,.2);border-top-color:#f5b301;border-radius:50%;animation:sp .8s linear infinite}
-#loaderTxt{color:#fff;font-size:13px;letter-spacing:.5px;opacity:.85}
-@keyframes sp{to{transform:rotate(360deg)}}
+/* ---------- Premium Glassmorphism Loader ---------- */
+#loader {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 99;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+}
+#loader.on {
+  opacity: 1;
+}
+
+.loader-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  background: linear-gradient(145deg, rgba(30,30,30,0.85), rgba(10,10,10,0.85));
+  padding: 35px 50px;
+  border-radius: 24px;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.05);
+}
+
+/* Neon Equalizer Animation */
+.equalizer {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  height: 40px;
+  margin-bottom: 10px;
+}
+.bar {
+  width: 8px;
+  background: #f5b301;
+  border-radius: 4px;
+  animation: equalize 1s ease-in-out infinite;
+  box-shadow: 0 0 15px rgba(245, 179, 1, 0.6);
+}
+.bar-1 { height: 20px; animation-delay: 0.0s; }
+.bar-2 { height: 40px; animation-delay: 0.2s; }
+.bar-3 { height: 30px; animation-delay: 0.4s; }
+.bar-4 { height: 35px; animation-delay: 0.1s; }
+.bar-5 { height: 25px; animation-delay: 0.3s; }
+
+@keyframes equalize {
+  0%, 100% { height: 10px; }
+  50% { height: 40px; }
+}
+
+#loaderTxt {
+  color: #fff;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+#loaderSubTxt {
+  color: #aaa;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  text-align: center;
+  max-width: 250px;
+  min-height: 20px;
+  transition: opacity 0.3s ease;
+}
 
 /* ---------- Status / error overlay ---------- */
 #status{position:absolute;inset:0;background:rgba(0,0,0,.82);display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:12;text-align:center;padding:24px}
@@ -84,8 +155,20 @@ video{width:100%;height:100%;object-fit:contain;background:#000}
     <div class="wm-text"><span class="one">One</span><span class="sports">Sports</span></div>
   </div>
 
-  <!-- Loading spinner -->
-  <div id="loader"><div class="spin"></div><div id="loaderTxt">Loading stream…</div></div>
+  <!-- Premium Loading Screen -->
+  <div id="loader">
+    <div class="loader-content">
+      <div class="equalizer">
+        <span class="bar bar-1"></span>
+        <span class="bar bar-2"></span>
+        <span class="bar bar-3"></span>
+        <span class="bar bar-4"></span>
+        <span class="bar bar-5"></span>
+      </div>
+      <div id="loaderTxt">Loading your stream…</div>
+      <div id="loaderSubTxt">Tuning into live broadcast...</div>
+    </div>
+  </div>
 
   <!-- Status / error overlay -->
   <div id="status">
@@ -116,17 +199,51 @@ const KEY_ID     = TEST_MODE ? "" : REAL_KEY_ID;
 const KEY        = TEST_MODE ? "" : REAL_KEY;
 
 /* ---------- Tunables (safe to adjust) ---------- */
-const PRESENTATION_DELAY   = 30;   // seconds behind live edge for safety net
-const BUFFERING_GOAL       = 45;   // seconds of buffer to aggressively build ahead
-const REBUFFERING_GOAL     = 2;    // seconds of buffer needed to resume after network drop
-const BUFFER_BEHIND        = 10;   // keep less history to save device RAM
+const PRESENTATION_DELAY   = 30;   // Industry standard sweet-spot for live streaming
+const BUFFERING_GOAL       = 60;   // aggressively hoard as much future data as possible
+const REBUFFERING_GOAL     = 1;    // if a stall happens, resume instantly after 1 second of data
+const BUFFER_BEHIND        = 5;    // drop past video instantly to free up resources
 const LIVE_EDGE_TOLERANCE  = 20;   // if we fall more than this behind live, badge shows "BEHIND"
 const MAX_AUTO_RELOADS     = 6;    // auto-reconnect attempts before giving up
 /* ======================================================= */
 
-let player, videoEl, container, loader, loaderTxt, statusEl, statusTitle, statusMsg, statusBtn;
+let player, videoEl, container, loader, loaderTxt, loaderSubTxt, statusEl, statusTitle, statusMsg, statusBtn;
 let autoReloads = 0;
 let reloadTimer = null;
+
+/* ---------- Dynamic Loading Facts ---------- */
+const loadFacts = [
+  "Tuning into live broadcast...",
+  "Optimizing for your connection speed...",
+  "Connecting to premium sports servers...",
+  "Fetching high-definition video chunks...",
+  "Hold tight, grabbing the live edge..."
+];
+let factIndex = 0;
+let factTimer = null;
+
+function startLoaderFacts() {
+  if (factTimer) return;
+  loaderSubTxt.style.opacity = 0;
+  setTimeout(() => {
+    loaderSubTxt.textContent = loadFacts[factIndex];
+    loaderSubTxt.style.opacity = 1;
+  }, 300);
+
+  factTimer = setInterval(() => {
+    factIndex = (factIndex + 1) % loadFacts.length;
+    loaderSubTxt.style.opacity = 0;
+    setTimeout(() => {
+      loaderSubTxt.textContent = loadFacts[factIndex];
+      loaderSubTxt.style.opacity = 1;
+    }, 300);
+  }, 3000);
+}
+
+function stopLoaderFacts() {
+  clearInterval(factTimer);
+  factTimer = null;
+}
 
 /* ---------- Error handling ---------- */
 function describeError(error){
@@ -160,6 +277,7 @@ function scheduleAutoReload(){
   const delay = Math.min(1000 * Math.pow(1.6, autoReloads), 8000);
   loaderTxt.textContent = `Reconnecting… (${autoReloads}/${MAX_AUTO_RELOADS})`;
   loader.classList.add("on");
+  startLoaderFacts();
   reloadTimer = setTimeout(async () => {
     reloadTimer = null;
     await loadStream();
@@ -168,6 +286,7 @@ function scheduleAutoReload(){
 
 function showStatus(title, msg, btnText){
   loader.classList.remove("on");
+  stopLoaderFacts();
   statusTitle.textContent = title;
   statusMsg.textContent = msg;
   statusBtn.textContent = btnText || "Reload";
@@ -192,12 +311,14 @@ function bindKeys(){
 /* ---------- Load / reload the stream ---------- */
 async function loadStream(){
   hideStatus();
-  loaderTxt.textContent = autoReloads ? `Reconnecting… (${autoReloads}/${MAX_AUTO_RELOADS})` : "Loading stream…";
+  loaderTxt.textContent = autoReloads ? `Reconnecting… (${autoReloads}/${MAX_AUTO_RELOADS})` : "Loading your stream…";
   loader.classList.add("on");
+  startLoaderFacts();
   try{
     await player.load(STREAM_URL);
     autoReloads = 0;
     loader.classList.remove("on");
+    stopLoaderFacts();
     hideStatus();
     try { await videoEl.play(); } catch(e){ console.warn("Autoplay prevented:", e); }
   }catch(e){
@@ -217,6 +338,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   container   = document.getElementById("pc");
   loader      = document.getElementById("loader");
   loaderTxt   = document.getElementById("loaderTxt");
+  loaderSubTxt= document.getElementById("loaderSubTxt");
   statusEl    = document.getElementById("status");
   statusTitle = document.getElementById("statusTitle");
   statusMsg   = document.getElementById("statusMsg");
@@ -242,14 +364,15 @@ document.addEventListener("DOMContentLoaded", async () => {
   const playerConfig = {
     abr: {
       enabled: true,
-      defaultBandwidthEstimate: 1500000,   // Start at 1.5 Mbps for instant playback, ABR will scale up instantly
-      switchInterval: 4,                   // Check bandwidth more frequently (every 4 seconds)
-      restrictToElementSize: true,         // Saves data on mobile, still full 1080p on PC
+      defaultBandwidthEstimate: 1000000,   // Ultra-safe 1 Mbps start for absolute zero initial buffering
+      switchInterval: 2,                   // Hyper-aggressive ABR evaluation (every 2 seconds)
+      bandwidthDowngradeTarget: 0.85,      // Drops quality significantly earlier to avoid stalling
+      restrictToElementSize: true,
     },
     manifest: {
       defaultPresentationDelay: PRESENTATION_DELAY,
       dash: { ignoreSuggestedPresentationDelay: false, ignoreMinBufferTime: false, autoCorrectDrift: true },
-      retryParameters: { maxAttempts: 5, baseDelay: 500, backoffFactor: 2, timeout: 20000 }
+      retryParameters: { maxAttempts: 10, baseDelay: 100, backoffFactor: 2, timeout: 15000 } // Instant retries
     },
     streaming: {
       bufferingGoal:   BUFFERING_GOAL,
@@ -257,11 +380,11 @@ document.addEventListener("DOMContentLoaded", async () => {
       bufferBehind:    BUFFER_BEHIND,
       lowLatencyMode:  false,              
       jumpLargeGaps:   true,
-      gapDetectionThreshold: 0.1,          // Aggressive gap detection for smoother playback over errors
+      gapDetectionThreshold: 0.1,
       stallEnabled:    true,
       stallThreshold:  1,
       stallSkip:       0.1,
-      retryParameters: { maxAttempts: 6, baseDelay: 500, backoffFactor: 2, fuzzFactor: 0.5, timeout: 20000 }
+      retryParameters: { maxAttempts: 10, baseDelay: 100, backoffFactor: 2, fuzzFactor: 0.5, timeout: 15000 } // Super fast chunk retry
     }
   };
 
@@ -274,10 +397,15 @@ document.addEventListener("DOMContentLoaded", async () => {
   player.addEventListener("error", onPlayerErrorEvent);
   player.addEventListener("buffering", (e) => {
     loader.classList.toggle("on", e.buffering);
-    if (e.buffering) loaderTxt.textContent = "Buffering…";
+    if (e.buffering) {
+      loaderTxt.textContent = "Loading your stream…";
+      startLoaderFacts();
+    } else {
+      stopLoaderFacts();
+    }
   });
-  videoEl.addEventListener("playing", () => { loader.classList.remove("on"); hideStatus(); });
-  videoEl.addEventListener("waiting", () => { loader.classList.add("on"); });
+  videoEl.addEventListener("playing", () => { loader.classList.remove("on"); stopLoaderFacts(); hideStatus(); });
+  videoEl.addEventListener("waiting", () => { loader.classList.add("on"); startLoaderFacts(); });
 
   const controlsContainer = container.querySelector(".shaka-controls-container");
   if (controlsContainer){
