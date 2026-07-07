@@ -199,10 +199,10 @@ const KEY_ID     = TEST_MODE ? "" : REAL_KEY_ID;
 const KEY        = TEST_MODE ? "" : REAL_KEY;
 
 /* ---------- Tunables (safe to adjust) ---------- */
-const PRESENTATION_DELAY   = 30;   // seconds behind live edge — more = smoother, less = closer to live
-const BUFFERING_GOAL       = 30;   // seconds of buffer to build ahead
+const PRESENTATION_DELAY   = 10;   // 10 seconds behind live edge for near real-time playback
+const BUFFERING_GOAL       = 10;   // exactly 10 seconds of forward buffer
 const REBUFFERING_GOAL     = 2;    // seconds of buffer needed before resuming after a stall
-const BUFFER_BEHIND        = 30;   // seconds of buffer kept behind playhead
+const BUFFER_BEHIND        = 10;   // seconds of buffer kept behind playhead
 const LIVE_EDGE_TOLERANCE  = 20;   // if we fall more than this behind live, badge shows "BEHIND"
 const MAX_AUTO_RELOADS     = 6;    // auto-reconnect attempts before giving up
 /* ======================================================= */
