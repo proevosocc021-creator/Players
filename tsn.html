@@ -164,8 +164,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       'spacer', 'picture_in_picture', 'quality', 'fullscreen'
     ],
     seekBarColors: { base: 'rgba(255,255,255,0.3)', buffered: 'rgba(255,255,255,0.6)', played: '#f5b301' },
-    fadeDelay: 3,
-    addBigPlayButton: true,
+    fadeDelay: 3
   });
 
   player.addEventListener('error', onPlayerErrorEvent);
@@ -205,7 +204,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       rebufferingGoal: 2,
       bufferBehind: 15,
       lowLatencyMode: false,
-      jumpLargeGaps: true,
       retryParameters: {
         maxAttempts: 5,
         baseDelay: 1000,
