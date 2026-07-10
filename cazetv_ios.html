@@ -4,20 +4,22 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="referrer" content="no-referrer">
-<title>OneSports // Caze TV (iOS)</title>
+<title>OneSports // Caze TV (Universal)</title>
 <!-- Orbitron font for the watermark -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+<!-- hls.js for universal HLS playback -->
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 <style>
 /* Base Styles */
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{width:100%;height:100%;background:#000;overflow:hidden;font-family:'Segoe UI',Roboto,sans-serif;-webkit-user-select:none;user-select:none}
 .video-container{position:fixed;inset:0;background:#000;display:flex;align-items:center;justify-content:center}
-video{width:100%;height:100%;object-fit:contain;background:#000}
+video{width:100%;height:100%;object-fit:contain;background:#000;z-index:1}
 
 /* Premium Loading Spinner */
-#loader{position:absolute;inset:0;background:rgba(0,0,0,.75);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;z-index:99;opacity:0;pointer-events:none;transition:opacity .4s ease}
+#loader{position:absolute;inset:0;background:rgba(0,0,0,.85);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;z-index:99;opacity:0;pointer-events:none;transition:opacity .4s ease}
 #loader.on{opacity:1}
 .spinner-container{position:relative;width:70px;height:70px;display:flex;align-items:center;justify-content:center}
 .ring-1{position:absolute;width:100%;height:100%;border:4px solid transparent;border-top-color:#f5b301;border-right-color:#f5b301;border-radius:50%;animation:spin 1.2s cubic-bezier(0.5,0,0.5,1) infinite;filter:drop-shadow(0 0 10px rgba(245,179,1,.8))}
@@ -36,7 +38,7 @@ video{width:100%;height:100%;object-fit:contain;background:#000}
   opacity:0.65;
   filter:drop-shadow(0 2px 4px rgba(0,0,0,0.8));
   transition:opacity .25s, bottom .25s, right .25s;
-  bottom: 60px; /* offset slightly higher so it doesn't overlap iOS controls */
+  bottom: 60px; /* offset slightly higher so it doesn't overlap native controls */
   right: 20px;
 }
 .wm-text {
@@ -53,10 +55,8 @@ video{width:100%;height:100%;object-fit:contain;background:#000}
 </head>
 <body>
 <div class="video-container" id="pc">
-  <!-- Native Video element for iOS -->
-  <video id="v" controls autoplay playsinline preload="auto">
-      <source src="https://dfr80qz435crc.cloudfront.net/MNOP/Amagi/Caze/Caze_TV_BR/720p-vtt/index.m3u8" type="application/x-mpegURL">
-  </video>
+  <!-- Video element -->
+  <video id="v" controls autoplay playsinline preload="auto"></video>
   
   <!-- Watermark -->
   <div id="wm">
@@ -78,6 +78,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const videoEl = document.getElementById('v');
   const loader = document.getElementById('loader');
   const loaderTxt = document.getElementById('loaderTxt');
+  const STREAM_URL = "https://dfr80qz435crc.cloudfront.net/MNOP/Amagi/Caze/Caze_TV_BR/720p-vtt/index.m3u8";
 
   /* ---------- Rotating Loading Sentences ---------- */
   const loadingPhrases = [
@@ -108,7 +109,7 @@ document.addEventListener('DOMContentLoaded', () => {
   loader.classList.add('on');
   startPhrases();
 
-  // Listen to native iOS video events to toggle the loader
+  // Listen to video events to toggle the loader
   videoEl.addEventListener("playing", () => { loader.classList.remove("on"); stopPhrases(); });
   videoEl.addEventListener("waiting", () => { loader.classList.add("on"); startPhrases(); });
   videoEl.addEventListener("canplay", () => { loader.classList.remove("on"); stopPhrases(); });
@@ -117,6 +118,33 @@ document.addEventListener('DOMContentLoaded', () => {
       loaderTxt.textContent = "Error loading stream."; 
       stopPhrases(); 
   });
+
+  // HLS.js logic (Universal Support for Desktop + iOS)
+  if (Hls.isSupported()) {
+      const hls = new Hls({
+          maxBufferLength: 15,
+          maxMaxBufferLength: 30
+      });
+      hls.loadSource(STREAM_URL);
+      hls.attachMedia(videoEl);
+      hls.on(Hls.Events.MANIFEST_PARSED, function() {
+          videoEl.play().catch(e => console.log("Autoplay blocked"));
+      });
+      hls.on(Hls.Events.ERROR, function (event, data) {
+          if (data.fatal) {
+              loaderTxt.textContent = "Fatal network error.";
+          }
+      });
+  }
+  // Native fallback for iOS Safari
+  else if (videoEl.canPlayType('application/vnd.apple.mpegurl')) {
+      videoEl.src = STREAM_URL;
+      videoEl.addEventListener('loadedmetadata', function() {
+          videoEl.play().catch(e => console.log("Autoplay blocked"));
+      });
+  } else {
+      loaderTxt.textContent = "Your browser does not support HLS playback.";
+  }
 });
 </script>
 </body>
