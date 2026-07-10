@@ -87,7 +87,14 @@ video{width:100%;height:100%;object-fit:contain;background:#000}
 /* =======================================================
    STREAM AND DRM CONFIGURATION 
 ======================================================= */
-const STREAM_URL = "https://channels.forestgump.space/track/39";
+const ORIGINAL_URL = "https://channels.forestgump.space/track/39";
+
+// ⚠️ PASTE YOUR CLOUDFLARE WORKER URL HERE ONCE YOU CREATE IT (Make sure it ends in a slash! e.g., https://proxy.myname.workers.dev/)
+const PROXY_URL = "https://YOUR_WORKER_URL.workers.dev/"; 
+
+const STREAM_URL = PROXY_URL.includes("YOUR_WORKER_URL") 
+  ? ORIGINAL_URL 
+  : `${PROXY_URL}?url=${encodeURIComponent(ORIGINAL_URL)}`;
 
 // 🔓 Decryption keys extracted from source:
 const KEY_ID = "";
